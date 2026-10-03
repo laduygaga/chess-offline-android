@@ -55,8 +55,7 @@ object ChessEngine {
         // Filter out moves that leave or put king in check
         val legalMoves = mutableListOf<Position>()
         for (to in pseudoMoves) {
-            val testMove = createMoveObject(board, from, to)
-            val newBoard = applyMoveToBoard(board, testMove)
+            val newBoard = applySimpleMove(board, from, to)
             if (!isKingInCheck(newBoard, turn)) {
                 legalMoves.add(to)
             }
@@ -94,7 +93,9 @@ object ChessEngine {
             board[pawnRow, to.col]
         } else destPiece
 
-        val san = generateSanNotation(board, from, to, piece, captured, isCastling, isEnPassant, promotionPieceType)
+        val finalPromotionType = promotionPieceType ?: if (piece.type == PieceType.PAWN && (to.row == 0 || to.row == 7)) PieceType.QUEEN else null
+
+        val san = generateSanNotation(board, from, to, piece, captured, isCastling, isEnPassant, finalPromotionType)
 
         return Move(
             from = from,
@@ -103,56 +104,52 @@ object ChessEngine {
             capturedPiece = captured,
             isCastling = isCastling,
             isEnPassant = isEnPassant,
-            promotionPieceType = promotionPieceType ?: if (piece.type == PieceType.PAWN && (to.row == 0 || to.row == 7)) PieceType.QUEEN else null,
+            promotionPieceType = finalPromotionType,
             sanNotation = san
         )
     }
 
-    fun applyMoveToBoard(board: Board, move: Move): Board {
-        val newGrid = Array(8) { r -> Array(8) { c -> board.grid[r][c] } }
+    fun applySimpleMove(board: Board, from: Position, to: Position, promotionPieceType: PieceType? = null): Board {
+        val piece = board[from] ?: return board
+        val isCastling = piece.type == PieceType.KING && kotlin.math.abs(from.col - to.col) == 2
+        val isEnPassant = piece.type == PieceType.PAWN && to == board.enPassantTarget
 
-        val piece = move.piece
+        val newGrid = Array(8) { r -> Array(8) { c -> board.grid[r][c] } }
         val movedPiece = piece.copy(hasMoved = true)
 
-        // Clear 'from' square
-        newGrid[move.from.row][move.from.col] = null
+        newGrid[from.row][from.col] = null
 
-        // Handle En Passant capture removal
-        if (move.isEnPassant) {
-            val capturedRow = if (piece.color == PieceColor.WHITE) move.to.row + 1 else move.to.row - 1
-            newGrid[capturedRow][move.to.col] = null
+        if (isEnPassant) {
+            val capturedRow = if (piece.color == PieceColor.WHITE) to.row + 1 else to.row - 1
+            newGrid[capturedRow][to.col] = null
         }
 
-        // Handle Pawn Promotion or normal placement
-        val finalPiece = if (move.promotionPieceType != null && piece.type == PieceType.PAWN) {
-            Piece(type = move.promotionPieceType, color = piece.color, hasMoved = true)
+        val finalPiece = if (promotionPieceType != null && piece.type == PieceType.PAWN) {
+            Piece(type = promotionPieceType, color = piece.color, hasMoved = true)
         } else {
             movedPiece
         }
-        newGrid[move.to.row][move.to.col] = finalPiece
+        newGrid[to.row][to.col] = finalPiece
 
-        // Handle Castling Rook move
-        if (move.isCastling) {
-            val row = move.from.row
-            if (move.to.col == 6) { // King-side
+        if (isCastling) {
+            val row = from.row
+            if (to.col == 6) {
                 val rook = newGrid[row][7]
                 newGrid[row][7] = null
                 newGrid[row][5] = rook?.copy(hasMoved = true)
-            } else if (move.to.col == 2) { // Queen-side
+            } else if (to.col == 2) {
                 val rook = newGrid[row][0]
                 newGrid[row][0] = null
                 newGrid[row][3] = rook?.copy(hasMoved = true)
             }
         }
 
-        // Calculate En Passant target square for next turn
         var newEnPassantTarget: Position? = null
-        if (piece.type == PieceType.PAWN && kotlin.math.abs(move.from.row - move.to.row) == 2) {
-            val enPassantRow = (move.from.row + move.to.row) / 2
-            newEnPassantTarget = Position(enPassantRow, move.from.col)
+        if (piece.type == PieceType.PAWN && kotlin.math.abs(from.row - to.row) == 2) {
+            val enPassantRow = (from.row + to.row) / 2
+            newEnPassantTarget = Position(enPassantRow, from.col)
         }
 
-        // Update castling rights
         var wCK = board.whiteCanCastleKingSide
         var wCQ = board.whiteCanCastleQueenSide
         var bCK = board.blackCanCastleKingSide
@@ -168,15 +165,15 @@ object ChessEngine {
             }
         }
         if (piece.type == PieceType.ROOK) {
-            if (move.from == Position(7, 7)) wCK = false
-            if (move.from == Position(7, 0)) wCQ = false
-            if (move.from == Position(0, 7)) bCK = false
-            if (move.from == Position(0, 0)) bCQ = false
+            if (from == Position(7, 7)) wCK = false
+            if (from == Position(7, 0)) wCQ = false
+            if (from == Position(0, 7)) bCK = false
+            if (from == Position(0, 0)) bCQ = false
         }
-        if (move.to == Position(7, 7)) wCK = false
-        if (move.to == Position(7, 0)) wCQ = false
-        if (move.to == Position(0, 7)) bCK = false
-        if (move.to == Position(0, 0)) bCQ = false
+        if (to == Position(7, 7)) wCK = false
+        if (to == Position(7, 0)) wCQ = false
+        if (to == Position(0, 7)) bCK = false
+        if (to == Position(0, 0)) bCQ = false
 
         return Board(
             grid = newGrid,
@@ -188,12 +185,31 @@ object ChessEngine {
         )
     }
 
+    fun applyMoveToBoard(board: Board, move: Move): Board {
+        return applySimpleMove(board, move.from, move.to, move.promotionPieceType)
+    }
+
     fun isCheckmate(board: Board, turn: PieceColor): Boolean {
-        return isKingInCheck(board, turn) && getAllLegalMoves(board, turn).isEmpty()
+        return isKingInCheck(board, turn) && getHasAnyLegalMoves(board, turn).not()
     }
 
     fun isStalemate(board: Board, turn: PieceColor): Boolean {
-        return !isKingInCheck(board, turn) && getAllLegalMoves(board, turn).isEmpty()
+        return !isKingInCheck(board, turn) && getHasAnyLegalMoves(board, turn).not()
+    }
+
+    private fun getHasAnyLegalMoves(board: Board, turn: PieceColor): Boolean {
+        for (r in 0..7) {
+            for (c in 0..7) {
+                val p = Position(r, c)
+                val piece = board[p]
+                if (piece != null && piece.color == turn) {
+                    if (getLegalMoves(board, p, turn).isNotEmpty()) {
+                        return true
+                    }
+                }
+            }
+        }
+        return false
     }
 
     fun isInsufficientMaterial(board: Board): Boolean {
@@ -205,10 +221,8 @@ object ChessEngine {
             }
         }
 
-        // King vs King
         if (pieces.size == 2) return true
 
-        // King & Bishop vs King or King & Knight vs King
         if (pieces.size == 3) {
             val nonKing = pieces.firstOrNull { it.type != PieceType.KING }
             if (nonKing != null && (nonKing.type == PieceType.BISHOP || nonKing.type == PieceType.KNIGHT)) {
@@ -247,8 +261,12 @@ object ChessEngine {
                     if (p != from) {
                         val otherPiece = board[p]
                         if (otherPiece != null && otherPiece.color == piece.color && otherPiece.type == piece.type) {
-                            if (getLegalMoves(board, p, piece.color).contains(to)) {
-                                ambiguousPieces.add(p)
+                            val pseudoDests = MoveValidator.getPseudoLegalMoves(board, p)
+                            if (pseudoDests.contains(to)) {
+                                val testBoard = applySimpleMove(board, p, to)
+                                if (!isKingInCheck(testBoard, piece.color)) {
+                                    ambiguousPieces.add(p)
+                                }
                             }
                         }
                     }
@@ -284,8 +302,7 @@ object ChessEngine {
         }
 
         // Check if move gives check or checkmate
-        val testMove = Move(from, to, piece, captured, isCastling, isEnPassant, promotionPieceType)
-        val nextBoard = applyMoveToBoard(board, testMove)
+        val nextBoard = applySimpleMove(board, from, to, promotionPieceType)
         val opponent = piece.color.opposite()
         if (isCheckmate(nextBoard, opponent)) {
             sb.append("#")
@@ -318,10 +335,8 @@ object ChessEngine {
             if (r < 7) fenBuilder.append('/')
         }
 
-        // Active color
         fenBuilder.append(if (turn == PieceColor.WHITE) " w " else " b ")
 
-        // Castling rights
         var castleStr = ""
         if (board.whiteCanCastleKingSide) castleStr += "K"
         if (board.whiteCanCastleQueenSide) castleStr += "Q"
@@ -330,10 +345,7 @@ object ChessEngine {
         if (castleStr.isEmpty()) castleStr = "-"
         fenBuilder.append(castleStr).append(" ")
 
-        // En passant
         fenBuilder.append(board.enPassantTarget?.toAlgebraic() ?: "-").append(" ")
-
-        // Clocks
         fenBuilder.append(halfMoveClock).append(" ").append(fullMoveNumber)
 
         return fenBuilder.toString()
