@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.chess.engine.ChessEngine
 import com.example.chess.engine.MinimaxAI
 import com.example.chess.model.AIDifficulty
+import com.example.chess.model.Board
 import com.example.chess.model.GameMode
 import com.example.chess.model.GameState
 import com.example.chess.model.GameStatus
+import com.example.chess.model.Piece
 import com.example.chess.model.PieceColor
 import com.example.chess.model.PieceType
 import com.example.chess.model.Position

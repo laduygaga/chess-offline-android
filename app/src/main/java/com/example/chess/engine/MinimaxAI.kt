@@ -3,6 +3,7 @@ package com.example.chess.engine
 import com.example.chess.model.AIDifficulty
 import com.example.chess.model.Board
 import com.example.chess.model.Move
+import com.example.chess.model.Piece
 import com.example.chess.model.PieceColor
 import com.example.chess.model.PieceType
 import com.example.chess.model.Position
