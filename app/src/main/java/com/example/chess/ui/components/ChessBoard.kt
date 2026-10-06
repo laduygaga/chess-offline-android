@@ -44,6 +44,7 @@ fun ChessBoard(
     isCheck: Boolean,
     currentTurn: PieceColor,
     isFlipped: Boolean = false,
+    bestSuggestedMove: Move? = null,
     onSquareClick: (Position) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -75,6 +76,7 @@ fun ChessBoard(
                         val isLegalMove = legalMoves.contains(pos)
                         val isLastMoveSquare = lastMove != null && (pos == lastMove.from || pos == lastMove.to)
                         val isCheckSquare = pos == kingInCheckPos
+                        val isBestMoveSquare = bestSuggestedMove != null && (pos == bestSuggestedMove.from || pos == bestSuggestedMove.to)
 
                         Box(
                             modifier = Modifier
@@ -84,6 +86,7 @@ fun ChessBoard(
                                     when {
                                         isCheckSquare -> CheckSquare
                                         isSelected -> SelectedSquare
+                                        isBestMoveSquare -> Color(0xAA629924)
                                         isLastMoveSquare -> LastMoveSquare
                                         else -> baseColor
                                     }

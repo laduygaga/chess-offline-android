@@ -22,8 +22,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.chess.model.Move
+import com.example.chess.model.MoveQuality
 import com.example.chess.ui.theme.CardBackground
-import com.example.chess.ui.theme.GoldAccent
+import com.example.chess.ui.theme.LichessBlue
+import com.example.chess.ui.theme.QualityBest
+import com.example.chess.ui.theme.QualityBlunder
+import com.example.chess.ui.theme.QualityGood
+import com.example.chess.ui.theme.QualityInaccuracy
+import com.example.chess.ui.theme.QualityMistake
 
 @Composable
 fun MoveHistoryView(
@@ -38,15 +44,14 @@ fun MoveHistoryView(
         }
     }
 
-    // Group moves into pairs (1. e4 e5, 2. Nf3 Nc6)
     val movePairs = moves.chunked(2)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(40.dp)
+            .height(44.dp)
             .background(CardBackground, shape = RoundedCornerShape(8.dp))
-            .padding(horizontal = 8.dp)
+            .padding(horizontal = 10.dp)
     ) {
         if (moves.isEmpty()) {
             Text(
@@ -59,39 +64,65 @@ fun MoveHistoryView(
             LazyRow(
                 state = listState,
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 itemsIndexed(movePairs) { index, pair ->
                     val moveNum = index + 1
-                    val whiteSan = pair.getOrNull(0)?.sanNotation ?: ""
-                    val blackSan = pair.getOrNull(1)?.sanNotation ?: ""
+                    val whiteMove = pair.getOrNull(0)
+                    val blackMove = pair.getOrNull(1)
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "$moveNum. ",
-                            color = GoldAccent,
+                            text = "$moveNum.",
+                            color = LichessBlue,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace
                         )
-                        Text(
-                            text = whiteSan,
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                        if (blackSan.isNotEmpty()) {
+                        if (whiteMove != null) {
                             Text(
-                                text = " $blackSan",
+                                text = " ${whiteMove.sanNotation}",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            if (whiteMove.moveQuality != null) {
+                                QualitySymbol(quality = whiteMove.moveQuality)
+                            }
+                        }
+                        if (blackMove != null) {
+                            Text(
+                                text = " ${blackMove.sanNotation}",
                                 color = Color.LightGray,
                                 fontSize = 13.sp,
                                 fontFamily = FontFamily.Monospace
                             )
+                            if (blackMove.moveQuality != null) {
+                                QualitySymbol(quality = blackMove.moveQuality)
+                            }
                         }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun QualitySymbol(quality: MoveQuality) {
+    val (color, symbol) = when (quality) {
+        MoveQuality.BEST -> Pair(QualityBest, "★")
+        MoveQuality.GOOD -> Pair(QualityGood, "✓")
+        MoveQuality.INACCURACY -> Pair(QualityInaccuracy, "?!")
+        MoveQuality.MISTAKE -> Pair(QualityMistake, "?")
+        MoveQuality.BLUNDER -> Pair(QualityBlunder, "??")
+    }
+    Text(
+        text = symbol,
+        color = color,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(start = 2.dp)
+    )
 }

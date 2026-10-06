@@ -3,6 +3,7 @@ package com.example.chess.engine
 import com.example.chess.model.AIDifficulty
 import com.example.chess.model.Board
 import com.example.chess.model.Move
+import com.example.chess.model.MoveQuality
 import com.example.chess.model.Piece
 import com.example.chess.model.PieceColor
 import com.example.chess.model.PieceType
@@ -10,6 +11,58 @@ import com.example.chess.model.Position
 import kotlin.random.Random
 
 object MinimaxAI {
+
+    fun evaluatePositionAtDepth(board: Board, turn: PieceColor, depth: Int = 3): Int {
+        if (ChessEngine.isCheckmate(board, turn)) {
+            return if (turn == PieceColor.WHITE) -10000 else 10000
+        }
+        if (ChessEngine.isStalemate(board, turn) || ChessEngine.isInsufficientMaterial(board)) {
+            return 0
+        }
+        val legalMoves = ChessEngine.getAllLegalMoves(board, turn)
+        if (legalMoves.isEmpty()) return evaluateBoard(board)
+
+        var bestEval = if (turn == PieceColor.WHITE) Int.MIN_VALUE else Int.MAX_VALUE
+        var alpha = Int.MIN_VALUE
+        var beta = Int.MAX_VALUE
+
+        for (move in orderMoves(legalMoves)) {
+            val newBoard = ChessEngine.applyMoveToBoard(board, move)
+            val eval = minimax(newBoard, depth - 1, alpha, beta, turn.opposite(), turn)
+            if (turn == PieceColor.WHITE) {
+                bestEval = maxOf(bestEval, eval)
+                alpha = maxOf(alpha, bestEval)
+            } else {
+                bestEval = minOf(bestEval, eval)
+                beta = minOf(beta, bestEval)
+            }
+            if (beta <= alpha) break
+        }
+        return if (bestEval == Int.MIN_VALUE || bestEval == Int.MAX_VALUE) evaluateBoard(board) else bestEval
+    }
+
+    fun evaluateMoveQuality(prevBoard: Board, move: Move, searchDepth: Int = 3): Pair<MoveQuality, Int> {
+        val playerColor = move.piece.color
+        val prevBestEval = evaluatePositionAtDepth(prevBoard, playerColor, depth = searchDepth)
+        val newBoard = ChessEngine.applyMoveToBoard(prevBoard, move)
+        val postMoveEval = evaluatePositionAtDepth(newBoard, playerColor.opposite(), depth = searchDepth - 1)
+
+        val cpLoss = if (playerColor == PieceColor.WHITE) {
+            maxOf(0, prevBestEval - postMoveEval)
+        } else {
+            maxOf(0, postMoveEval - prevBestEval)
+        }
+
+        val quality = when {
+            cpLoss <= 15 -> MoveQuality.BEST
+            cpLoss <= 45 -> MoveQuality.GOOD
+            cpLoss <= 90 -> MoveQuality.INACCURACY
+            cpLoss <= 200 -> MoveQuality.MISTAKE
+            else -> MoveQuality.BLUNDER
+        }
+
+        return Pair(quality, postMoveEval)
+    }
 
     fun findBestMove(board: Board, aiColor: PieceColor, difficulty: AIDifficulty): Move? {
         val legalMoves = ChessEngine.getAllLegalMoves(board, aiColor)

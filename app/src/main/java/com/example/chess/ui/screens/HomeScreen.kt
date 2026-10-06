@@ -34,7 +34,8 @@ import com.example.chess.model.GameMode
 import com.example.chess.model.PieceColor
 import com.example.chess.ui.theme.AppBackground
 import com.example.chess.ui.theme.CardBackground
-import com.example.chess.ui.theme.GoldAccent
+import com.example.chess.ui.theme.LichessBlue
+import com.example.chess.ui.theme.LichessGreen
 
 @Composable
 fun HomeScreen(
@@ -53,22 +54,20 @@ fun HomeScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // App Title Banner
         Text(
-            text = "♔ CHESS OFFLINE ♚",
-            color = GoldAccent,
-            fontSize = 32.sp,
+            text = "♔ LICHESS STYLE CHESS ♚",
+            color = Color.White,
+            fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
         Text(
-            text = "Play Pass & Play or vs Computer",
+            text = "Play Offline with Live Move Evaluation",
             color = Color.Gray,
             fontSize = 14.sp,
             modifier = Modifier.padding(top = 4.dp, bottom = 32.dp)
         )
 
-        // Settings Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -79,10 +78,9 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Game Mode
                 Text(
                     text = "GAME MODE",
-                    color = GoldAccent,
+                    color = LichessBlue,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -109,10 +107,9 @@ fun HomeScreen(
                 if (selectedMode == GameMode.VS_AI) {
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // AI Difficulty
                     Text(
                         text = "AI DIFFICULTY",
-                        color = GoldAccent,
+                        color = LichessBlue,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -134,10 +131,9 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Player Side
                     Text(
                         text = "PLAY AS",
-                        color = GoldAccent,
+                        color = LichessBlue,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -164,10 +160,9 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Time Control
                 Text(
                     text = "TIMER LIMIT",
-                    color = GoldAccent,
+                    color = LichessBlue,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -191,7 +186,6 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Start Button
         Button(
             onClick = {
                 onStartGame(selectedMode, selectedDifficulty, selectedPlayerColor, selectedTimeMinutes)
@@ -200,11 +194,11 @@ fun HomeScreen(
                 .fillMaxWidth()
                 .height(56.dp),
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = GoldAccent)
+            colors = ButtonDefaults.buttonColors(containerColor = LichessGreen)
         ) {
             Text(
-                text = "START GAME",
-                color = Color.Black,
+                text = "PLAY GAME",
+                color = Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -214,8 +208,8 @@ fun HomeScreen(
 
 @Composable
 private fun chipColors() = FilterChipDefaults.filterChipColors(
-    selectedContainerColor = GoldAccent,
-    selectedLabelColor = Color.Black,
-    containerColor = Color(0xFF3A3835),
+    selectedContainerColor = LichessBlue,
+    selectedLabelColor = Color.White,
+    containerColor = Color(0xFF2A2825),
     labelColor = Color.White
 )

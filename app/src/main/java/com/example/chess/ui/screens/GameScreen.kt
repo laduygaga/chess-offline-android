@@ -5,17 +5,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -31,16 +31,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.chess.model.GameMode
 import com.example.chess.model.GameStatus
+import com.example.chess.model.MoveQuality
 import com.example.chess.model.PieceColor
 import com.example.chess.ui.components.CapturedPiecesView
 import com.example.chess.ui.components.ChessBoard
 import com.example.chess.ui.components.ChessClock
+import com.example.chess.ui.components.EvalBar
 import com.example.chess.ui.components.GameOverDialog
 import com.example.chess.ui.components.MoveHistoryView
 import com.example.chess.ui.components.PromotionDialog
 import com.example.chess.ui.theme.AppBackground
 import com.example.chess.ui.theme.CardBackground
-import com.example.chess.ui.theme.GoldAccent
+import com.example.chess.ui.theme.LichessBlue
+import com.example.chess.ui.theme.QualityBest
+import com.example.chess.ui.theme.QualityBlunder
+import com.example.chess.ui.theme.QualityGood
+import com.example.chess.ui.theme.QualityInaccuracy
+import com.example.chess.ui.theme.QualityMistake
 import com.example.chess.viewmodel.ChessViewModel
 
 @Composable
@@ -64,7 +71,7 @@ fun GameScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(AppBackground)
-            .padding(12.dp),
+            .padding(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
@@ -72,7 +79,7 @@ fun GameScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 4.dp),
+                .padding(bottom = 2.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -81,22 +88,32 @@ fun GameScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = CardBackground),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text(text = "← Home", color = Color.White)
+                Text(text = "← Home", color = Color.White, fontSize = 13.sp)
             }
 
             Text(
                 text = if (state.gameMode == GameMode.VS_AI) "vs AI (${state.aiDifficulty.name})" else "Pass & Play",
-                color = GoldAccent,
-                fontSize = 16.sp,
+                color = LichessBlue,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
             )
 
-            Button(
-                onClick = { isBoardFlipped = !isBoardFlipped },
-                colors = ButtonDefaults.buttonColors(containerColor = CardBackground),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(text = "🔄 Flip", color = Color.White)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Button(
+                    onClick = { viewModel.toggleEvalBar() },
+                    colors = ButtonDefaults.buttonColors(containerColor = if (state.showEvalBar) LichessBlue else CardBackground),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(text = "📊 Bar", color = Color.White, fontSize = 13.sp)
+                }
+
+                Button(
+                    onClick = { isBoardFlipped = !isBoardFlipped },
+                    colors = ButtonDefaults.buttonColors(containerColor = CardBackground),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(text = "🔄", color = Color.White, fontSize = 13.sp)
+                }
             }
         }
 
@@ -114,17 +131,57 @@ fun GameScreen(
             capturedByBlack = state.capturedPieces.filter { it.color == PieceColor.WHITE }
         )
 
-        // Interactive Chess Board
-        ChessBoard(
-            board = state.board,
-            selectedPosition = state.selectedPosition,
-            legalMoves = state.legalMovesForSelected,
-            lastMove = state.moveHistory.lastOrNull(),
-            isCheck = state.isCheck,
-            currentTurn = state.currentTurn,
-            isFlipped = isBoardFlipped,
-            onSquareClick = { pos -> viewModel.onSquareSelected(pos) }
-        )
+        val lastQuality = state.lastMoveQuality
+        if (lastQuality != null) {
+            val (badgeColor, badgeText) = when (lastQuality) {
+                MoveQuality.BEST -> Pair(QualityBest, "★ Best Move")
+                MoveQuality.GOOD -> Pair(QualityGood, "✓ Good Move")
+                MoveQuality.INACCURACY -> Pair(QualityInaccuracy, "?! Inaccuracy")
+                MoveQuality.MISTAKE -> Pair(QualityMistake, "? Mistake")
+                MoveQuality.BLUNDER -> Pair(QualityBlunder, "?? Blunder")
+            }
+            Card(
+                colors = CardDefaults.cardColors(containerColor = badgeColor.copy(alpha = 0.25f)),
+                shape = RoundedCornerShape(6.dp),
+                modifier = Modifier.padding(vertical = 2.dp)
+            ) {
+                Text(
+                    text = badgeText,
+                    color = badgeColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (state.showEvalBar) {
+                EvalBar(
+                    evalCentipawns = state.evalCentipawns,
+                    isFlipped = isBoardFlipped,
+                    modifier = Modifier.padding(end = 6.dp)
+                )
+            }
+
+            ChessBoard(
+                board = state.board,
+                selectedPosition = state.selectedPosition,
+                legalMoves = state.legalMovesForSelected,
+                lastMove = state.moveHistory.lastOrNull(),
+                isCheck = state.isCheck,
+                currentTurn = state.currentTurn,
+                isFlipped = isBoardFlipped,
+                bestSuggestedMove = state.bestSuggestedMove,
+                onSquareClick = { pos -> viewModel.onSquareSelected(pos) },
+                modifier = Modifier.weight(1f)
+            )
+        }
 
         // Bottom Clock
         ChessClock(
@@ -137,33 +194,48 @@ fun GameScreen(
         // Move History Log
         MoveHistoryView(moves = state.moveHistory)
 
-        // Action Buttons Row (Undo, Resign, Restart)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            Button(
+                onClick = { viewModel.evaluateCurrentPosition() },
+                modifier = Modifier
+                    .weight(1.2f)
+                    .height(44.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = LichessBlue)
+            ) {
+                Text(
+                    text = if (state.isEvaluating) "Evaluating..." else "🔍 Evaluate Move",
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
             Button(
                 onClick = { viewModel.undoMove() },
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp),
+                    .height(44.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = CardBackground)
             ) {
-                Text(text = "↩ Undo", color = Color.White)
+                Text(text = "↩ Undo", color = Color.White, fontSize = 13.sp)
             }
 
             Button(
                 onClick = { viewModel.resign(state.currentTurn) },
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp),
+                    .height(44.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6B2222))
             ) {
-                Text(text = "🏳 Resign", color = Color.White)
+                Text(text = "🏳 Resign", color = Color.White, fontSize = 13.sp)
             }
         }
     }

@@ -32,12 +32,18 @@ data class GameState(
     val gameMode: GameMode = GameMode.PASS_AND_PLAY,
     val aiColor: PieceColor = PieceColor.BLACK,
     val aiDifficulty: AIDifficulty = AIDifficulty.MEDIUM,
-    val whiteTimeSeconds: Long = 600, // 10 minutes default
+    val whiteTimeSeconds: Long = 600,
     val blackTimeSeconds: Long = 600,
     val initialTimeSeconds: Long = 600,
     val halfMoveClock: Int = 0,
     val fullMoveNumber: Int = 1,
     val selectedPosition: Position? = null,
     val legalMovesForSelected: List<Position> = emptyList(),
-    val pendingPromotionMove: Pair<Position, Position>? = null
+    val pendingPromotionMove: Pair<Position, Position>? = null,
+    val evalCentipawns: Int = 0,
+    val showEvalBar: Boolean = true,
+    val lastMoveQuality: MoveQuality? = null,
+    val lastMoveEvalLoss: Int? = null,
+    val bestSuggestedMove: Move? = null,
+    val isEvaluating: Boolean = false
 )

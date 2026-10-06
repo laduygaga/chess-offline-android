@@ -125,7 +125,10 @@ class ChessViewModel : ViewModel() {
 
     private fun executeMove(from: Position, to: Position, promotionType: PieceType?) {
         val state = _gameState.value
-        val move = ChessEngine.createMoveObject(state.board, from, to, promotionType)
+        val baseMove = ChessEngine.createMoveObject(state.board, from, to, promotionType)
+        val (quality, evalScore) = MinimaxAI.evaluateMoveQuality(state.board, baseMove, searchDepth = 2)
+        val move = baseMove.copy(evalCentipawns = evalScore, moveQuality = quality)
+
         val newBoard = ChessEngine.applyMoveToBoard(state.board, move)
 
         val nextTurn = state.currentTurn.opposite()
@@ -159,12 +162,36 @@ class ChessViewModel : ViewModel() {
                 winner = if (isMate) state.currentTurn else null,
                 selectedPosition = null,
                 legalMovesForSelected = emptyList(),
-                fullMoveNumber = if (nextTurn == PieceColor.WHITE) it.fullMoveNumber + 1 else it.fullMoveNumber
+                fullMoveNumber = if (nextTurn == PieceColor.WHITE) it.fullMoveNumber + 1 else it.fullMoveNumber,
+                evalCentipawns = evalScore,
+                lastMoveQuality = quality,
+                bestSuggestedMove = null
             )
         }
 
         if (newStatus == GameStatus.IN_PROGRESS) {
             triggerAiMoveIfNeeded()
+        }
+    }
+
+    fun toggleEvalBar() {
+        _gameState.update { it.copy(showEvalBar = !it.showEvalBar) }
+    }
+
+    fun evaluateCurrentPosition() {
+        viewModelScope.launch(Dispatchers.Default) {
+            _gameState.update { it.copy(isEvaluating = true) }
+            val currentBoard = _gameState.value.board
+            val currentTurn = _gameState.value.currentTurn
+            val eval = MinimaxAI.evaluatePositionAtDepth(currentBoard, currentTurn, depth = 3)
+            val bestMove = MinimaxAI.findBestMove(currentBoard, currentTurn, AIDifficulty.HARD)
+            _gameState.update {
+                it.copy(
+                    evalCentipawns = eval,
+                    bestSuggestedMove = bestMove,
+                    isEvaluating = false
+                )
+            }
         }
     }
 
